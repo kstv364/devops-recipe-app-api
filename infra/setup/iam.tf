@@ -172,8 +172,8 @@ data "aws_iam_policy_document" "rds" {
   }
 
   statement {
-    effect = "Allow"
-    actions = ["iam:CreateServiceLinkedRole"]
+    effect    = "Allow"
+    actions   = ["iam:CreateServiceLinkedRole"]
     resources = ["arn:aws:iam::*:role/aws-service-role/rds.amazonaws.com/AWSServiceRoleForRDS"]
     condition {
       test     = "StringLike"

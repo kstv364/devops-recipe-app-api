@@ -1,6 +1,9 @@
 name: Destroy
 
 on:
+  schedule:
+    - cron: '0 * * * *' # Run every hour for staging
+    - cron: '0 * * * *' # Run every hour for prod
   workflow_dispatch:
     inputs:
       environment:
@@ -9,25 +12,38 @@ on:
         options:
           - staging
           - prod
-  schedule:
-    - cron: '0 * * * *' # Run every hour
 
 jobs:
-  destroy:
-    name: Destroy ${{ matrix.environment }}
+  destroy_staging:
+    name: Destroy Staging
+    if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'staging')
     runs-on: ubuntu-22.04
-    strategy:
-      matrix:
-        environment: ${{ github.event_name == 'schedule' && fromJson('["staging", "prod"]') || fromJson(format('["{0}"]', github.event.inputs.environment)) }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Terraform Destroy
+      - name: Terraform Destroy Staging
         env:
           AWS_ACCESS_KEY_ID: ${{ vars.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         run: |
-          export TF_WORKSPACE=${{ matrix.environment }}
+          export TF_WORKSPACE=staging
+          cd infra/
+          docker compose run --rm terraform -chdir=deploy/ init
+          docker compose run --rm terraform -chdir=deploy/ destroy -auto-approve
+
+  destroy_prod:
+    name: Destroy Prod
+    if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'prod')
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Terraform Destroy Prod
+        env:
+          AWS_ACCESS_KEY_ID: ${{ vars.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        run: |
+          export TF_WORKSPACE=prod
           cd infra/
           docker compose run --rm terraform -chdir=deploy/ init
           docker compose run --rm terraform -chdir=deploy/ destroy -auto-approve
